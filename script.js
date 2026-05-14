@@ -55,6 +55,9 @@ function startAITimer() {
     const bar = document.getElementById('timer-bar-fill');
     const text = document.getElementById('timer-count');
     
+    // 이전 타이머가 혹시 남아있다면 제거
+    clearInterval(timerInterval);
+
     timerInterval = setInterval(() => {
         timeLeft -= 0.1;
         if (timeLeft <= 0) {
