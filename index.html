@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>CHESS PLAY - Global Edition</title>
+    <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <div class="bg-image"></div>
+    <div class="game-container">
+        <div class="header-area">
+            <h1>CHESS PLAY</h1>
+            <button id="rules-btn" onclick="toggleModal('rules-modal')"><i class="fa-solid fa-book-open"></i> 규칙 보기</button>
+            <button id="rank-btn" onclick="showLeaderboard()"><i class="fa-solid fa-trophy"></i> 명예의 전당</button>
+        </div>
+        
+        <div id="setup-panel" class="control-panel">
+            <h3>게임 설정</h3>
+            <input type="text" id="player-name" placeholder="닉네임을 입력하세요" maxlength="10">
+            <div class="setting-group">
+                <p>1. 진영 선택</p>
+                <button class="color-btn" onclick="selectColor('w')" id="btn-w">백 (먼저 두기)</button>
+                <button class="color-btn" onclick="selectColor('b')" id="btn-b">흑 (나중에 두기)</button>
+            </div>
+            <div class="setting-group">
+                <p>2. 난이도 선택</p>
+                <button class="diff-btn" onclick="setDifficulty(1)" id="diff-1">초심자</button>
+                <button class="diff-btn" onclick="setDifficulty(2)" id="diff-2">일반인</button>
+                <button class="diff-btn" onclick="setDifficulty(3)" id="diff-3">아마추어</button>
+                <button class="diff-btn" onclick="setDifficulty(4)" id="diff-4">프로</button>
+            </div>
+            <button id="start-btn" onclick="startGame()">GAME START</button>
+        </div>
+
+        <div id="info-panel" class="control-panel" style="display:none;">
+            <div id="status-box">준비되었습니다.</div>
+            <button id="restart-btn" onclick="location.reload()">항복 및 재시작</button>
+        </div>
+
+        <div id="board"></div>
+    </div>
+
+    <div id="rank-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="toggleModal('rank-modal')">&times;</span>
+            <h2>🏆 명예의 전당 (최단 수 랭킹)</h2>
+            <table id="leaderboard-table">
+                <thead><tr><th>순위</th><th>닉네임</th><th>난이도</th><th>승리 턴 수</th></tr></thead>
+                <tbody id="leaderboard-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="rules-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="toggleModal('rules-modal')">&times;</span>
+            <h2>체스 기본 및 특수 규칙</h2>
+            <div class="rules-text">
+                <p><strong>1. 목표:</strong> 상대방의 '킹'을 도망칠 곳 없이 공격하는 '체크메이트'를 달성하면 승리합니다.</p>
+                <br>
+                <p><strong>2. 특수 규칙:</strong> 캐슬링, 프로모션, 앙파상 등 정통 체스의 모든 규칙이 적용됩니다.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
