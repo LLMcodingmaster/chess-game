@@ -11,7 +11,6 @@ var pst_w = {
     k: [ [-30,-40,-40,-50,-50,-40,-40,-30],[-30,-40,-40,-50,-50,-40,-40,-30],[-30,-40,-40,-50,-50,-40,-40,-30],[-30,-40,-40,-50,-50,-40,-40,-30],[-20,-30,-30,-40,-40,-30,-30,-20],[-10,-20,-20,-20,-20,-20,-20,-10],[20,20,0,0,0,0,20,20],[20,30,10,0,0,10,30,20] ]
 };
 
-// ★ 타이머 제어 변수 (최대 4초)
 var startTime = 0;
 var timeUp = false;
 var MAX_TIME = 4000; 
@@ -33,6 +32,7 @@ function evaluateBoard(game) {
             var p = board[i][j];
             if (p) {
                 var val = pieceValues[p.type] + (pst_w[p.type] ? pst_w[p.type][i][j] : 0);
+                // 백은 양수, 흑은 음수로 절대적인 가치를 더함
                 total += (p.color === 'w' ? val : -val);
             }
         }
@@ -49,11 +49,12 @@ function orderMoves(game, moves) {
     });
 }
 
+// ★ 버그 수정: 부호 반전(-1) 제거! 무조건 절대 평가값(stand_pat)을 그대로 반환함.
 function quiesce(game, alpha, beta, isMax, qLimit) {
     checkTime(); 
     if (timeUp) return 0; 
 
-    var stand_pat = (isMax ? 1 : -1) * evaluateBoard(game);
+    var stand_pat = evaluateBoard(game); 
     if (qLimit === 0) return stand_pat;
 
     if (isMax) {
@@ -83,71 +84,13 @@ function quiesce(game, alpha, beta, isMax, qLimit) {
     return isMax ? alpha : beta;
 }
 
+// ★ 버그 수정: 깊이가 0일 때 부호 반전(-1) 제거!
 function minimax(game, depth, alpha, beta, isMax, useQuiesce) {
     checkTime(); 
     if (timeUp) return 0; 
 
-    if (depth === 0) return useQuiesce ? quiesce(game, alpha, beta, isMax, 3) : (isMax ? 1 : -1) * evaluateBoard(game);
+    if (depth === 0) return useQuiesce ? quiesce(game, alpha, beta, isMax, 3) : evaluateBoard(game);
     
     var moves = orderMoves(game, game.moves());
     if (isMax) {
-        var best = -99999;
-        for (var m of moves) {
-            game.move(m);
-            best = Math.max(best, minimax(game, depth - 1, alpha, beta, false, useQuiesce));
-            game.undo();
-            alpha = Math.max(alpha, best);
-            if (beta <= alpha) break;
-        }
-        return best;
-    } else {
-        var best = 99999;
-        for (var m of moves) {
-            game.move(m);
-            best = Math.min(best, minimax(game, depth - 1, alpha, beta, true, useQuiesce));
-            game.undo();
-            beta = Math.min(beta, best);
-            if (beta <= alpha) break;
-        }
-        return best;
-    }
-}
-
-// 메인 실행: 타이머와 반복 심화 적용
-onmessage = function(e) {
-    var { fen, depth, isAIWhite, useQuiesce } = e.data;
-    var game = new Chess(fen);
-    var moves = orderMoves(game, game.moves());
-    var bestMove = moves[0]; 
-    
-    startTime = Date.now();
-    timeUp = false;
-    nodeCount = 0;
-
-    for (var d = 1; d <= depth; d++) {
-        var currentBestMove = null;
-        var bestVal = isAIWhite ? -999999 : 999999;
-
-        for (var m of moves) {
-            game.move(m);
-            var val = minimax(game, d - 1, -1000000, 1000000, !isAIWhite, useQuiesce);
-            game.undo();
-
-            if (timeUp) break;
-
-            if (isAIWhite ? val > bestVal : val < bestVal) {
-                bestVal = val; 
-                currentBestMove = m;
-            }
-        }
-
-        if (timeUp) {
-            break; 
-        } else {
-            bestMove = currentBestMove || bestMove; 
-        }
-    }
-
-    // 4초 제한에 걸리든 다 찾았든, 찾은 최고의 수를 보냄!
-    postMessage(bestMove || moves[Math.floor(Math.random() * moves.length)]);
-};
+        var best = -999999;
