@@ -18,13 +18,17 @@ var playerColor = null;
 var gameActive = false;
 var selectedSquare = null;
 var playerName = "";
+var timerInterval = null; // 타이머 제어용 변수
 
 const diffNames = { 1: "초심자", 2: "일반인", 3: "아마추어", 4: "프로" };
-var pieceValues = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 20000 };
 
+// 보조 두뇌 (worker.js) 호출
 var aiWorker = new Worker('worker.js');
 
+// AI가 계산을 마치고 수를 던져주면 작동
 aiWorker.onmessage = function(e) {
+    stopAITimer(); // 수가 도착하면 타이머 즉시 정지!
+    
     var move = e.data;
     if (move) {
         game.move(move);
@@ -33,6 +37,7 @@ aiWorker.onmessage = function(e) {
     }
 };
 
+// 모달 제어
 function toggleModal(id) {
     var modal = document.getElementById(id);
     modal.style.display = (modal.style.display === "block") ? "none" : "block";
@@ -43,10 +48,33 @@ window.onclick = function(event) {
     if (event.target == document.getElementById("rank-modal")) document.getElementById("rank-modal").style.display = "none";
 }
 
+// 타이머 함수 (4초)
+function startAITimer() {
+    document.getElementById('timer-container').style.display = 'block';
+    let timeLeft = 4.0;
+    const bar = document.getElementById('timer-bar-fill');
+    const text = document.getElementById('timer-count');
+    
+    timerInterval = setInterval(() => {
+        timeLeft -= 0.1;
+        if (timeLeft <= 0) {
+            timeLeft = 0;
+            clearInterval(timerInterval);
+        }
+        text.innerText = timeLeft.toFixed(1);
+        bar.style.width = (timeLeft / 4.0 * 100) + '%';
+    }, 100);
+}
+
+function stopAITimer() {
+    clearInterval(timerInterval);
+    document.getElementById('timer-container').style.display = 'none';
+}
+
+// 파이어베이스 점수 저장
 function saveResult(resultText) {
     if (!playerName) return;
     let turns = Math.ceil(game.history().length / 2); 
-    
     database.ref('rankings').push({
         name: playerName,
         difficulty: diffNames[difficultyDepth],
@@ -56,6 +84,7 @@ function saveResult(resultText) {
     });
 }
 
+// 명예의 전당 (최단 수 정렬)
 function showLeaderboard() {
     toggleModal('rank-modal');
     database.ref('rankings').once('value', (snapshot) => {
@@ -78,6 +107,7 @@ function showLeaderboard() {
     });
 }
 
+// 세팅 버튼 동작
 function selectColor(color) {
     playerColor = color;
     $('.color-btn').removeClass('active');
@@ -103,12 +133,14 @@ function startGame() {
     if (playerColor === 'b') makeBestMove(); 
 }
 
+// AI에게 계산 명령 내리기
 function makeBestMove() {
     if (game.game_over() || !gameActive) return;
+    
+    startAITimer(); // 계산 시작과 함께 4초 타이머 가동
 
-    // ★ 속도 최적화: 프로(4) 난이도도 깊이를 3으로 맞추되, 함정 방지(useQuiesce)만 켜서 지능 확보!
     var depth = difficultyDepth == 4 ? 3 : difficultyDepth;
-    var useQuiesce = (difficultyDepth == 4);
+    var useQuiesce = (difficultyDepth >= 3);
 
     aiWorker.postMessage({
         fen: game.fen(),
@@ -118,26 +150,60 @@ function makeBestMove() {
     });
 }
 
+// 이동 가능 위치(힌트) 표시
+function showMoveHints(square) {
+    var moves = game.moves({ square: square, verbose: true });
+    if (moves.length === 0) return;
+
+    moves.forEach(function(move) {
+        var $el = $('#board .square-' + move.to);
+        if (move.captured) {
+            $el.addClass('highlight-capture'); 
+        } else {
+            $el.addClass('highlight-hint'); 
+        }
+    });
+}
+
+// 힌트 삭제
+function removeHints() {
+    $('#board [class^="square-"]').removeClass('highlight-hint highlight-capture');
+}
+
+function highlightSquare(square) { 
+    $('#board .square-' + square).addClass('highlight-active'); 
+}
+
+function removeHighlight() { 
+    $('#board [class^="square-"]').removeClass('highlight-active'); 
+}
+
+// 플레이어 말 클릭 시
 function onSquareClick(square) {
-    if (!gameActive) return;
+    if (!gameActive || game.turn() !== playerColor) return;
 
     if (selectedSquare === null) {
         var piece = game.get(square);
         if (piece && piece.color === playerColor) {
             selectedSquare = square;
+            removeHints();
+            removeHighlight();
             highlightSquare(square);
+            showMoveHints(square); // 클릭 시 힌트 보여주기
         }
         return;
     }
 
     var move = game.move({ from: selectedSquare, to: square, promotion: 'q' });
-    removeHighlight();
     
     if (move === null) {
         var piece = game.get(square);
-        if (piece && piece.color === playerColor) {
+        removeHints();
+        removeHighlight();
+        if (piece && piece.color === playerColor && square !== selectedSquare) {
             selectedSquare = square;
             highlightSquare(square);
+            showMoveHints(square);
         } else {
             selectedSquare = null; 
         }
@@ -146,14 +212,14 @@ function onSquareClick(square) {
 
     board.position(game.fen());
     selectedSquare = null;
+    removeHints();
+    removeHighlight();
     updateStatus();
     
     if (!game.game_over()) makeBestMove();
 }
 
-function highlightSquare(square) { $('#board .square-' + square).addClass('highlight-active'); }
-function removeHighlight() { $('#board [class^="square-"]').removeClass('highlight-active'); }
-
+// 게임 상태 체크 (승리, 무승부 판단)
 function updateStatus() {
     var status = "";
     var restartBtn = document.getElementById('restart-btn');

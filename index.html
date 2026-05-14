@@ -36,6 +36,10 @@
 
         <div id="info-panel" class="control-panel" style="display:none;">
             <div id="status-box">준비되었습니다.</div>
+            <div id="timer-container" style="display:none;">
+                AI 생각 중... <span id="timer-count">4.0</span>초
+                <div class="timer-bar-bg"><div id="timer-bar-fill"></div></div>
+            </div>
             <button id="restart-btn" onclick="location.reload()">항복 및 재시작</button>
         </div>
 
@@ -60,21 +64,22 @@
             <div class="rules-text">
                 <p><strong>1. 목표:</strong> 상대방의 '킹'을 도망칠 곳 없이 공격하는 '체크메이트'를 달성하면 승리합니다.</p>
                 <br>
-                <p><strong>2. 기물 이동 방법:</strong></p>
+                <p><strong>2. 기물 이동 및 힌트:</strong></p>
+                <p>게임을 시작하고 내 말을 클릭하면 <strong>이동 가능한 칸에 초록색 점</strong>이, <strong>상대방을 잡을 수 있는 칸엔 빨간색 테두리</strong>가 표시됩니다!</p>
                 <ul>
                     <li><strong>폰(쫄병):</strong> 처음엔 2칸 전진 가능, 이후 1칸만 전진. 상대 말을 잡을 때는 대각선 1칸으로만 공격.</li>
-                    <li><strong>룩(성벽):</strong> 십자가 방향(상하좌우)으로 쭉쭉 무제한 이동.</li>
-                    <li><strong>나이트(말):</strong> 한글 'ㄱ'이나 'L'자 모양으로 다른 말을 뛰어넘어 이동 가능.</li>
+                    <li><strong>룩(성벽):</strong> 십자가 방향(상하좌우)으로 무제한 이동.</li>
+                    <li><strong>나이트(말):</strong> 한글 'ㄱ'이나 'L'자 모양으로 다른 말을 뛰어넘어 이동.</li>
                     <li><strong>비숍(성직자):</strong> X자 대각선 방향으로만 무제한 이동.</li>
-                    <li><strong>퀸(여왕):</strong> 상하좌우 + 대각선 모든 방향으로 무제한 이동하는 최강의 말.</li>
-                    <li><strong>킹(왕):</strong> 모든 방향으로 딱 1칸씩만 조심스럽게 이동.</li>
+                    <li><strong>퀸(여왕):</strong> 상하좌우 + 대각선 모든 방향으로 무제한 이동.</li>
+                    <li><strong>킹(왕):</strong> 모든 방향으로 1칸만 이동.</li>
                 </ul>
                 <br>
-                <p><strong>3. 꼭 알아야 할 특수 규칙:</strong></p>
+                <p><strong>3. 특수 규칙:</strong></p>
                 <ul>
-                    <li><strong>캐슬링(Castling):</strong> 내 '킹'과 구석에 있는 '룩'이 한 번에 자리를 바꾸어 킹을 안전하게 숨기는 방어 기술입니다. (조건: 두 말 모두 안 움직였고, 사이에 다른 말이 없어야 함)</li>
-                    <li><strong>프로모션(승급):</strong> 가장 약한 폰이 살아서 상대편 맨 끝 줄에 도달하면, 퀸 등 강력한 기물로 변신할 수 있습니다.</li>
-                    <li><strong>앙파상(En Passant):</strong> 상대방 폰이 처음 2칸을 전진해 내 폰 옆에 나란히 섰을 때, 대각선으로 찔러서 잡아먹는 독특한 규칙입니다.</li>
+                    <li><strong>캐슬링:</strong> 킹과 구석의 룩이 자리를 바꾸는 방어 기술 (사이에 말이 없고 안 움직였을 때 가능).</li>
+                    <li><strong>프로모션:</strong> 폰이 상대 끝 줄에 도달하면 퀸 등으로 승급.</li>
+                    <li><strong>앙파상:</strong> 상대 폰이 처음 2칸을 뛰었을 때, 대각선으로 찔러 잡는 기술.</li>
                 </ul>
             </div>
         </div>
