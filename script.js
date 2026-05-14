@@ -1,4 +1,4 @@
-// ★ 1. 본인의 Firebase 설정값으로 교체하세요! ★
+// ★ 본인의 Firebase 설정값으로 변경 필수! ★
 const firebaseConfig = {
   apiKey: "AIzaSyBsTILIaHfuhMFQAEyXLNE3V2lNDUJVVNI",
   authDomain: "chess-leaderboard-eab00.firebaseapp.com",
@@ -22,10 +22,8 @@ var playerName = "";
 const diffNames = { 1: "초심자", 2: "일반인", 3: "아마추어", 4: "프로" };
 var pieceValues = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 20000 };
 
-// ★ 보조 두뇌(Worker) 연결
 var aiWorker = new Worker('worker.js');
 
-// AI가 계산을 끝내고 수를 보내주면 실행됨
 aiWorker.onmessage = function(e) {
     var move = e.data;
     if (move) {
@@ -80,7 +78,6 @@ function showLeaderboard() {
     });
 }
 
-// 여기서부터가 아까 빼먹었던 진짜 중요한 버튼 클릭 함수들!
 function selectColor(color) {
     playerColor = color;
     $('.color-btn').removeClass('active');
@@ -109,11 +106,13 @@ function startGame() {
 function makeBestMove() {
     if (game.game_over() || !gameActive) return;
 
-    // AI에게 '보조 두뇌'로 계산을 떠넘김
-    var useQuiesce = (difficultyDepth >= 3);
+    // ★ 속도 최적화: 프로(4) 난이도도 깊이를 3으로 맞추되, 함정 방지(useQuiesce)만 켜서 지능 확보!
+    var depth = difficultyDepth == 4 ? 3 : difficultyDepth;
+    var useQuiesce = (difficultyDepth == 4);
+
     aiWorker.postMessage({
         fen: game.fen(),
-        depth: parseInt(difficultyDepth), 
+        depth: parseInt(depth), 
         isAIWhite: (playerColor === 'b'),
         useQuiesce: useQuiesce
     });
@@ -149,7 +148,6 @@ function onSquareClick(square) {
     selectedSquare = null;
     updateStatus();
     
-    // 내가 수를 두면 AI에게 다음 수를 계산하라고 명령
     if (!game.game_over()) makeBestMove();
 }
 
