@@ -18,22 +18,27 @@ var nodeCount = 0;
 
 function checkTime() {
     if ((nodeCount++ & 1023) === 0) {
-        if (Date.now() - startTime > MAX_TIME) {
-            timeUp = true; 
-        }
+        if (Date.now() - startTime > MAX_TIME) timeUp = true; 
     }
 }
 
-function evaluateBoard(game) {
+// NegaMax를 위한 강력하고 깔끔한 판세 평가
+function evaluateBoard(game, color) {
     var total = 0;
     var board = game.board();
     for (var i = 0; i < 8; i++) {
         for (var j = 0; j < 8; j++) {
             var p = board[i][j];
             if (p) {
-                var val = pieceValues[p.type] + (pst_w[p.type] ? pst_w[p.type][i][j] : 0);
-                // 백은 양수, 흑은 음수로 절대적인 가치를 더함
-                total += (p.color === 'w' ? val : -val);
+                var val = pieceValues[p.type];
+                var pst = pst_w[p.type];
+                if (pst) {
+                    var rank = p.color === 'w' ? i : 7 - i; // 흑백 위치 자동 보정
+                    val += pst[rank][j];
+                }
+                // 내 기물이면 점수 더하고, 적 기물이면 뺌
+                if (p.color === color) total += val;
+                else total -= val;
             }
         }
     }
@@ -43,54 +48,115 @@ function evaluateBoard(game) {
 function orderMoves(game, moves) {
     return moves.sort((a, b) => {
         var scoreA = 0; var scoreB = 0;
-        if (a.includes('x')) scoreA += 10; if (b.includes('x')) scoreB += 10;
-        if (a.includes('+')) scoreA += 5; if (b.includes('+')) scoreB += 5;
+        if (a.includes('x')) scoreA += 10;
+        if (b.includes('x')) scoreB += 10;
+        if (a.includes('+')) scoreA += 5;
+        if (b.includes('+')) scoreB += 5;
         return scoreB - scoreA;
     });
 }
 
-// ★ 버그 수정: 부호 반전(-1) 제거! 무조건 절대 평가값(stand_pat)을 그대로 반환함.
-function quiesce(game, alpha, beta, isMax, qLimit) {
+function quiesce(game, alpha, beta, color, qLimit) {
     checkTime(); 
     if (timeUp) return 0; 
 
-    var stand_pat = evaluateBoard(game); 
+    var stand_pat = evaluateBoard(game, color); 
     if (qLimit === 0) return stand_pat;
 
-    if (isMax) {
-        if (stand_pat >= beta) return beta;
-        if (alpha < stand_pat) alpha = stand_pat;
-    } else {
-        if (stand_pat <= alpha) return alpha;
-        if (beta > stand_pat) beta = stand_pat;
-    }
+    if (stand_pat >= beta) return beta;
+    if (alpha < stand_pat) alpha = stand_pat;
 
-    var moves = orderMoves(game, game.moves().filter(m => m.includes('x')));
+    var moves = game.moves().filter(m => m.includes('x'));
     if (moves.length === 0) return stand_pat;
+    
+    var movesSorted = orderMoves(game, moves);
 
-    for (var m of moves) {
+    for (var m of movesSorted) {
         game.move(m);
-        var score = quiesce(game, alpha, beta, !isMax, qLimit - 1);
+        var score = -quiesce(game, -beta, -alpha, color === 'w' ? 'b' : 'w', qLimit - 1);
         game.undo();
         
-        if (isMax) {
-            if (score >= beta) return beta;
-            if (score > alpha) alpha = score;
-        } else {
-            if (score <= alpha) return alpha;
-            if (score < beta) beta = score;
-        }
+        if (score >= beta) return beta;
+        if (score > alpha) alpha = score;
     }
-    return isMax ? alpha : beta;
+    return alpha;
 }
 
-// ★ 버그 수정: 깊이가 0일 때 부호 반전(-1) 제거!
-function minimax(game, depth, alpha, beta, isMax, useQuiesce) {
+function negamax(game, depth, alpha, beta, color, useQuiesce) {
     checkTime(); 
     if (timeUp) return 0; 
 
-    if (depth === 0) return useQuiesce ? quiesce(game, alpha, beta, isMax, 3) : evaluateBoard(game);
+    if (depth === 0) return useQuiesce ? quiesce(game, alpha, beta, color, 3) : evaluateBoard(game, color);
     
-    var moves = orderMoves(game, game.moves());
-    if (isMax) {
-        var best = -999999;
+    var moves = game.moves();
+    if (moves.length === 0) {
+        if (game.in_checkmate()) return -999999;
+        return 0; 
+    }
+
+    var movesSorted = orderMoves(game, moves);
+    var bestScore = -Infinity;
+
+    for (var m of movesSorted) {
+        game.move(m);
+        var score = -negamax(game, depth - 1, -beta, -alpha, color === 'w' ? 'b' : 'w', useQuiesce);
+        game.undo();
+
+        if (score > bestScore) bestScore = score;
+        if (bestScore > alpha) alpha = bestScore;
+        if (alpha >= beta) break;
+    }
+    return bestScore;
+}
+
+onmessage = function(e) {
+    try {
+        var { fen, depth, isAIWhite, useQuiesce } = e.data;
+        var game = new Chess(fen);
+        var moves = game.moves();
+        
+        if (moves.length === 0) {
+            postMessage(null);
+            return;
+        }
+
+        var aiColor = isAIWhite ? 'w' : 'b';
+        var movesSorted = orderMoves(game, moves);
+        var bestMove = movesSorted[0]; 
+        
+        startTime = Date.now();
+        timeUp = false;
+        nodeCount = 0;
+
+        for (var d = 1; d <= depth; d++) {
+            var currentBestMove = null;
+            var currentBestScore = -Infinity;
+
+            for (var m of movesSorted) {
+                game.move(m);
+                var score = -negamax(game, d - 1, -1000000, 1000000, aiColor === 'w' ? 'b' : 'w', useQuiesce);
+                game.undo();
+
+                if (timeUp) break;
+
+                if (score > currentBestScore) {
+                    currentBestScore = score;
+                    currentBestMove = m;
+                }
+            }
+
+            if (timeUp) {
+                break; 
+            } else {
+                bestMove = currentBestMove || bestMove; 
+            }
+        }
+
+        postMessage(bestMove || movesSorted[Math.floor(Math.random() * movesSorted.length)]);
+    } catch (err) {
+        // ★ 최후의 방어막: 에러가 나도 게임이 멈추지 않고 아무 수나 두게 만듦
+        if (moves && moves.length > 0) {
+            postMessage(moves[0]);
+        }
+    }
+};
